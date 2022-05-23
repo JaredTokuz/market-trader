@@ -1,0 +1,1 @@
+docker run --rm -it -p 3000:3000/tcp --env-file ./.env  market-trader:latest 
