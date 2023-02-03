@@ -1,62 +1,60 @@
 package token
 
 import (
-	"context"
-	"io/ioutil"
+	"encoding/json"
 	"log"
+	"os"
 	"time"
-
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type TokenProviderService interface {
+type AccessTokenService interface {
 	Fetch() (string, error)
 }
 
 type tokenHandler struct {
 	Path		string
-	Value		string
-	Collection *mongo.Collection
+	Token		string
 	Expiration	time.Time
 }
 
-func NewTokenProviderService(collection *mongo.Collection, tokenPath string) TokenProviderService {
-	var tokeDoc PartialTokeDoc
-	result := collection.FindOne(context.TODO(), bson.M{})
-	result.Decode(&tokeDoc)
-	b, err:= fileToString(tokenPath)
+type accessTokenPayload struct {
+	headers		accessTokenHeader
+	data		accessTokenData
+}
+
+type accessTokenHeader struct {
+	Date	string	`json:"Date"`
+}
+
+type accessTokenData struct {
+	RefreshToken	string	`json:"refresh_token"`
+	ExpiresIn		int	`json:"expires_in"`
+}
+
+func NewAccessTokenService(file_path string) AccessTokenService {
+	accessTokenPayload := getAccessToken(file_path)
+	access_response_date, err := time.Parse(time.RFC1123, accessTokenPayload.headers.Date)
 	if err != nil {
-		log.Fatal("failure loading token file ",err)
-	}
+        log.Fatal("parsing access token header date", err.Error())
+    }
 	return &tokenHandler{
-		Collection: collection,
-		Expiration: tokeDoc.Until,
-		Path: tokenPath,
-		Value: b,
+		Path: file_path,
+		Token: accessTokenPayload.data.RefreshToken,
+		Expiration: access_response_date.Add(time.Second * time.Duration(accessTokenPayload.data.ExpiresIn)),
 	}
 }
 
-type PartialTokeDoc struct {
-	ID			primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	Until		time.Time					 `json:"until" bson:"until"`
-}
-
-func (a *tokenHandler) refreshToken() error {
-	var tokeDoc PartialTokeDoc
-	result := a.Collection.FindOne(context.TODO(), bson.M{})
-	err := result.Decode(&tokeDoc)
-	if err != nil {
-		return err
-	}
-	a.Expiration = tokeDoc.Until
-	b, err:= fileToString(a.Path)
-	if err != nil {
-		return err
-	}
-	a.Value = b
-	return nil
+func getAccessToken(file_path string) accessTokenPayload {
+	tokenFile, err := os.Open(file_path)
+    if err != nil {
+        log.Fatal("opening config file", err.Error())
+    }
+    jsonParser := json.NewDecoder(tokenFile)
+	var accessTokenPayload = accessTokenPayload{}
+    if err = jsonParser.Decode(&accessTokenPayload); err != nil {
+        log.Fatal("parsing config file", err.Error())
+    }
+	return accessTokenPayload
 }
 
 func (a *tokenHandler) isTokenExpired() bool {
@@ -65,19 +63,8 @@ func (a *tokenHandler) isTokenExpired() bool {
 
 func (a *tokenHandler) Fetch() (string, error) {
 	if a.isTokenExpired() == true {
-		err := a.refreshToken()
-		if err != nil {
-			return "", err
-		}
+		accessTokenPayload := getAccessToken(a.Path)
+		a.Token = accessTokenPayload.data.RefreshToken
 	}
-	return a.Value, nil
-}
-
-
-func fileToString(filePath string) (string, error) {
-	b, err:= ioutil.ReadFile(filePath)
-	if err != nil {
-		return "",err
-	}
-	return string(b), nil
+	return a.Token, nil
 }

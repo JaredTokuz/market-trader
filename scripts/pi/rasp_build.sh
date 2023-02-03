@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 env GOOS=linux GOARCH=arm GOARM=7 go build -o ./dist/yearDaily ./cmd/yearDaily
 
 env GOOS=linux GOARCH=arm GOARM=7 go build -o ./dist/day2Minute15 ./cmd/day2Minute15

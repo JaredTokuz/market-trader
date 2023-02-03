@@ -28,7 +28,7 @@ type Worker interface {
 type worker struct {
 	Database *mongo.Database
 	APIKey		string
-	TokenHandler token.TokenProviderService
+	TokenHandler token.AccessTokenService
 }
 
 type WorkStatus struct {
@@ -38,7 +38,7 @@ type WorkStatus struct {
 var ErrAlreadyWorking = errors.New("already working")
 
 //NewWorker is the single instance worker that is being created.
-func NewWorker(database *mongo.Database, api_key string, tokenHandler token.TokenProviderService) Worker {
+func NewWorker(database *mongo.Database, api_key string, tokenHandler token.AccessTokenService) Worker {
 	return &worker{
 		Database: database,
 		APIKey: api_key,

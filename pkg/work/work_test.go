@@ -41,7 +41,7 @@ func setup() error {
 		log.Fatal(err)
 		return err
 	}
-	tokenHandler := token.NewTokenProviderService(mg.Token, os.Getenv("TOKEN_PATH"))
+	tokenHandler := token.NewAccessTokenService(os.Getenv("TOKEN_PATH"))
 	api_key := os.Getenv("API_KEY")
 	testWorker = NewWorker(mg.Db, api_key, tokenHandler)
 	return nil

@@ -14,8 +14,8 @@ import (
 
 type WorkDoc struct {
 	ID        primitive.ObjectID 	 `bson:"_id,omitempty"`
-	Symbol 		string							 `bson:"symbol"`
-	Work			string							 `bson:"work"`
+	Symbol 	  string				 `bson:"symbol"`
+	Work	  string				 `bson:"work"`
 }
 
 const WORK = "work"

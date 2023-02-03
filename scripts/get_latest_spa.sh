@@ -1,5 +1,7 @@
 #!/usr/bin/sh
 
+# TODO build via docker container possibly
+
 DIRECTORY="/home/jt/Projects/angular-trader/dist"
 
 if [ ! -d "$DIRECTORY" ]; then
