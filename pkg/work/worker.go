@@ -205,8 +205,10 @@ func day15Minute30(db *mongo.Database, api_key string, token string, workDoc Wor
 		startDate: strconv.FormatInt(startDate.Unix()*1000, 10),
 		endDate: strconv.FormatInt(endDate.Unix()*1000, 10),
 		needExtendedHoursData: "true",
+		token: token,
+		symbol: workDoc.Symbol,
 	}
-	ph, err := getPriceHistory(token, workDoc.Symbol, phinp)
+	ph, err := getPriceHistory(phinp)
 	if err != nil {
 		return err
 	}
@@ -241,8 +243,10 @@ func day2Minute15(db *mongo.Database, api_key string, token string, workDoc Work
 		startDate: strconv.FormatInt(startDate.Unix()*1000, 10),
 		endDate: strconv.FormatInt(endDate.Unix()*1000, 10),
 		needExtendedHoursData: "true",
+		token: token,
+		symbol: workDoc.Symbol,
 	}
-	ph, err := getPriceHistory(token, workDoc.Symbol, phinp)
+	ph, err := getPriceHistory(phinp)
 	if err != nil {
 		return err
 	}
@@ -278,8 +282,10 @@ func minute15Signals(db *mongo.Database, api_key string, token string, workDoc W
 		startDate: strconv.FormatInt(startDate.Unix()*1000, 10),
 		endDate: strconv.FormatInt(endDate.Unix()*1000, 10),
 		needExtendedHoursData: "true",
+		token: token,
+		symbol: workDoc.Symbol,
 	}
-	ph, err := getPriceHistory(token, workDoc.Symbol, phinp)
+	ph, err := getPriceHistory(phinp)
 	if err != nil {
 		return err
 	}
@@ -354,6 +360,8 @@ func round(number float64) float64 {
 }
 
 type PriceHistoryInput struct {
+	token string
+	symbol string
 	apikey string
 	periodType string // default day
 	frequencyType string // ex minute, daily
@@ -363,36 +371,33 @@ type PriceHistoryInput struct {
 	needExtendedHoursData string // bool
 }
 
-func getPriceHistory(token string, symbol string, priceHistoryInp PriceHistoryInput) (*PriceHistory, error) {
+func getPriceHistory(params PriceHistoryInput) (*PriceHistory, error) {
 	// TODO add the retryiable http from hashicorp
 	client := http.Client{}
-	url := fmt.Sprintf("https://api.tdameritrade.com/v1/marketdata/%v/pricehistory", symbol)
+	url := fmt.Sprintf("https://api.tdameritrade.com/v1/marketdata/%v/pricehistory", params.symbol)
 	req, err := http.NewRequest("GET", url, nil)
-	req.Header.Add("Authorization", "Bearer " + token)
+	req.Header.Add("Authorization", "Bearer " + params.token)
 	query := req.URL.Query()
-	query.Add("apikey", priceHistoryInp.apikey)
-	query.Add("periodType", priceHistoryInp.periodType)
-	query.Add("frequencyType", priceHistoryInp.frequencyType)
-	query.Add("frequency", priceHistoryInp.frequency)
-	query.Add("endDate", priceHistoryInp.endDate)
-	query.Add("startDate", priceHistoryInp.startDate)
-	query.Add("needExtendedHoursData", priceHistoryInp.needExtendedHoursData)
+	query.Add("apikey", params.apikey)
+	query.Add("periodType", params.periodType)
+	query.Add("frequencyType", params.frequencyType)
+	query.Add("frequency", params.frequency)
+	query.Add("endDate", params.endDate)
+	query.Add("startDate", params.startDate)
+	query.Add("needExtendedHoursData", params.needExtendedHoursData)
 	req.URL.RawQuery = query.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	time.Sleep(1000 * time.Millisecond) // adjust for 120 per minute throttle
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		// var body interface{}
-		// err = json.NewDecoder(resp.Body).Decode(&body)
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 				return nil, err
 		}
-		errmsg := fmt.Sprintf("%s - %s", symbol, string(b))
+		errmsg := fmt.Sprintf("%s - %s", params.symbol, string(b))
 		return nil, errors.New("Price History Response: " + errmsg)
 	}
 
@@ -420,12 +425,12 @@ type PriceHistory struct {
 }
 
 type AdjCandle struct {
-	Datetime	uint64 `json:"datetime" bson:"datetime"`
+	Datetime		uint64 `json:"datetime" bson:"datetime"`
 	Close			float32	`json:"close" bson:"close"`
 	High			float32 `json:"high" bson:"high"`
 	Low				float32 `json:"low" bson:"low"`
 	Open			float32 `json:"open" bson:"open"`
-	Volume		int `json:"volume" bson:"volume"`
+	Volume			int `json:"volume" bson:"volume"`
 	VolZScore		float64 `json:"volzscore" bson:"volzscore"`
 }
 
