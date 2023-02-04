@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jaredtokuz/market-trader/api/presenter"
-	"github.com/jaredtokuz/market-trader/pkg/stocks"
+	"github.com/jaredtokuz/market-trader/stocks"
 )
 
 func GetBySymbol(service stocks.Service, collectionName string) fiber.Handler {
@@ -15,26 +15,26 @@ func GetBySymbol(service stocks.Service, collectionName string) fiber.Handler {
 		result, err := service.FindOneSymbol(collectionName, symbol)
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
-			return c.JSON(presenter.ErrorResponse(err)) 
+			return c.JSON(presenter.ErrorResponse(err))
 		}
-		return c.JSON(presenter.SuccessResponse(result)) 
+		return c.JSON(presenter.SuccessResponse(result))
 	}
 }
 
 func UploadStocks(service stocks.Service) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		fileContent, err := formToContent(c,"data")
+		fileContent, err := formToContent(c, "data")
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
-			return c.JSON(presenter.ErrorResponse(err)) 
+			return c.JSON(presenter.ErrorResponse(err))
 		}
 		defer fileContent.Close()
 		err = service.UploadStocks(fileContent)
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
-			return c.JSON(presenter.ErrorResponse(err)) 
+			return c.JSON(presenter.ErrorResponse(err))
 		}
-		return c.JSON(presenter.SimpleSuccessResponse("file uploaded successfully")) 
+		return c.JSON(presenter.SimpleSuccessResponse("file uploaded successfully"))
 	}
 }
 

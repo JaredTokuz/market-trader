@@ -4,12 +4,16 @@ import (
 	"context"
 	"log"
 
-	"github.com/jaredtokuz/market-trader/cmd/setup"
-	"github.com/jaredtokuz/market-trader/pkg/work"
+	"github.com/jaredtokuz/market-trader/etl"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 func main() {
+	config, err := etl.Configuration()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	setup, err := setup.Setup()
 	if err != nil {
 		log.Fatal(err)

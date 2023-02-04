@@ -2,7 +2,7 @@ package routes
 
 import (
 	"github.com/jaredtokuz/market-trader/api/handlers"
-	"github.com/jaredtokuz/market-trader/pkg/stocks"
+	"github.com/jaredtokuz/market-trader/stocks"
 
 	"github.com/gofiber/fiber/v2"
 )

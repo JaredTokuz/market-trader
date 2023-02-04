@@ -19,7 +19,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/jaredtokuz/market-trader/api/routes"
-	"github.com/jaredtokuz/market-trader/pkg/stocks"
+	"github.com/jaredtokuz/market-trader/stocks"
 )
 
 // MongoInstance contains the Mongo client and database objects
@@ -62,9 +62,9 @@ func Connect() error {
 
 func main() {
 	err := godotenv.Load()
-  if err != nil {
-    log.Println("Error loading .env file")
-  }
+	if err != nil {
+		log.Println("Error loading .env file")
+	}
 
 	// Connect to the database
 	if err := Connect(); err != nil {
@@ -80,14 +80,13 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "http://localhost:4200",
 		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH",
-    AllowHeaders: "",
+		AllowHeaders: "",
 	}))
-
 
 	api := app.Group("/api")
 	routes.StockRouter(api, stocksService)
 
-		// serve Single Page application on "/web"
+	// serve Single Page application on "/web"
 	// assume static file at dist folder
 	app.Static("/", "angular-trader")
 

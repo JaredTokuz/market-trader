@@ -1,21 +1,22 @@
-package work
+package etl
+
+// TODO refactor this
 
 import (
 	"context"
 	"time"
 
+	"github.com/jaredtokuz/market-trader/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-
-	"github.com/jaredtokuz/market-trader/pkg/helpers"
 )
 
 type WorkDoc struct {
-	ID        primitive.ObjectID 	 `bson:"_id,omitempty"`
-	Symbol 	  string				 `bson:"symbol"`
-	Work	  string				 `bson:"work"`
+	ID     primitive.ObjectID `bson:"_id,omitempty"`
+	Symbol string             `bson:"symbol"`
+	Work   string             `bson:"work"`
 }
 
 const WORK = "work"
@@ -50,11 +51,10 @@ func Append(workName string, cursor *mongo.Cursor, db *mongo.Database) error {
 	}
 
 	db.Collection("logs").InsertOne(context.TODO(), bson.M{
-		"desc": AppendWork,
+		"desc":     AppendWork,
 		"workName": workName,
-		"init_dt": time.Now(),
+		"init_dt":  time.Now(),
 	})
 
 	return nil
 }
-

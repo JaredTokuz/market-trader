@@ -1,4 +1,4 @@
-package work
+package etl
 
 import (
 	"context"
@@ -6,19 +6,16 @@ import (
 	"os"
 	"path"
 	"testing"
-	"time"
 
-	"github.com/jaredtokuz/market-trader/pkg/token"
+	"github.com/jaredtokuz/market-trader/token"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func TestMain(m *testing.M) {
 	setup()
 	log.Println("setup complete")
-	code := m.Run() 
+	code := m.Run()
 	shutdown()
 	os.Exit(code)
 }
@@ -28,28 +25,30 @@ func setup() error {
 	if err != nil {
 		return err
 	}
-	envPath := path.Join(cwd, "../..", ".test.env") 
+	envPath := path.Join(cwd, "../..", ".test.env")
 	log.Println(envPath)
 
 	err = godotenv.Load(envPath)
-  if err != nil {
-    log.Fatal("Error loading .env file", err)
+	if err != nil {
+		log.Fatal("Error loading .env file", err)
 		return err
-  }
+	}
+
 	// Connect to the database
-	if err := Connect(); err != nil {
+	mg, err := Connect(os.Getenv("MONGO_URI"))
+	if err != nil {
 		log.Fatal(err)
 		return err
 	}
 	tokenHandler := token.NewAccessTokenService(os.Getenv("TOKEN_PATH"))
 	api_key := os.Getenv("API_KEY")
-	testWorker = NewWorker(mg.Db, api_key, tokenHandler)
+	_ = NewWorker(mg.Db, api_key, tokenHandler)
 	return nil
 }
 
 func shutdown() {}
 
-func TestAppend(t * testing.T) {
+func TestAppend(t *testing.T) {
 	cursor, err := mg.Stocks.Find(context.TODO(), bson.D{})
 	if err != nil {
 		t.Error("Issue in check daily avg volume", err)
@@ -61,7 +60,7 @@ func TestAppend(t * testing.T) {
 	}
 }
 
-func TestAppendWorkYearDaily(t * testing.T) {
+func TestAppendWorkYearDaily(t *testing.T) {
 	cursor, err := mg.Stocks.Find(context.TODO(), bson.D{})
 	if err != nil {
 		t.Error("Stocks Find operation", err)
@@ -77,8 +76,8 @@ func TestAppendWorkYearDaily(t * testing.T) {
 	}
 }
 
-func TestAppendWorkDay15Minute30(t * testing.T) {
-	cursor, err := mg.Stocks.Find(context.TODO(), bson.M{"fundamental.vol10DayAvg": bson.M{"$gt": 500000 } })
+func TestAppendWorkDay15Minute30(t *testing.T) {
+	cursor, err := mg.Stocks.Find(context.TODO(), bson.M{"fundamental.vol10DayAvg": bson.M{"$gt": 500000}})
 	if err != nil {
 		t.Error("Issue in check daily avg volume", err)
 	}
@@ -94,8 +93,8 @@ func TestAppendWorkDay15Minute30(t * testing.T) {
 }
 
 // Since it is 2 days it will not work on sundays
-func TestAppendWorkDay2Minute15(t * testing.T) {
-	cursor, err := mg.Stocks.Find(context.TODO(), bson.M{"fundamental.vol10DayAvg": bson.M{"$gt": 500000 } })
+func TestAppendWorkDay2Minute15(t *testing.T) {
+	cursor, err := mg.Stocks.Find(context.TODO(), bson.M{"fundamental.vol10DayAvg": bson.M{"$gt": 500000}})
 	if err != nil {
 		t.Error("Issue in check daily avg volume", err)
 	}
@@ -110,8 +109,8 @@ func TestAppendWorkDay2Minute15(t * testing.T) {
 	}
 }
 
-func TestAppendWorkMinute15Signals(t * testing.T) {
-	cursor, err := mg.Stocks.Find(context.TODO(), bson.M{"signal": true })
+func TestAppendWorkMinute15Signals(t *testing.T) {
+	cursor, err := mg.Stocks.Find(context.TODO(), bson.M{"signal": true})
 	if err != nil {
 		t.Error("Issue in check daily avg volume", err)
 	}
@@ -126,49 +125,46 @@ func TestAppendWorkMinute15Signals(t * testing.T) {
 	}
 }
 
+// var testWorker Worker
 
-var testWorker Worker
+// type MongoTestInstance struct {
+// 	Client *mongo.Client
+// 	Db     *mongo.Database
+// 	Stocks *mongo.Collection
+// 	Token  *mongo.Collection
+// }
 
+// var mg MongoTestInstance
 
-type MongoTestInstance struct {
-	Client *mongo.Client
-	Db     *mongo.Database
-	Stocks *mongo.Collection
-	Token *mongo.Collection
-}
+// func Connect() error {
+// 	mongoURI := os.Getenv("MONGO_URI")
+// 	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
+// 	if err != nil {
+// 		return err
+// 	}
+// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+// 	defer cancel()
 
-var mg MongoTestInstance
+// 	err = client.Connect(ctx)
+// 	db := client.Database(os.Getenv("DB_NAME"))
 
+// 	if err != nil {
+// 		return err
+// 	}
 
-func Connect() error {
-	mongoURI := os.Getenv("MONGO_URI")
-	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+// 	stocks := db.Collection("stocks")
+// 	token := client.Database(os.Getenv("PROD_DB_NAME")).Collection("toke")
 
-	err = client.Connect(ctx)
-	db := client.Database(os.Getenv("DB_NAME"))
+// 	if err != nil {
+// 		return err
+// 	}
 
-	if err != nil {
-		return err
-	}
+// 	mg = MongoTestInstance{
+// 		Client: client,
+// 		Db:     db,
+// 		Stocks: stocks,
+// 		Token:  token,
+// 	}
 
-	stocks := db.Collection("stocks")
-	token := client.Database(os.Getenv("PROD_DB_NAME")).Collection("toke")
-
-	if err != nil {
-		return err
-	}
-
-	mg = MongoTestInstance{
-		Client: client,
-		Db:     db,
-		Stocks: stocks,
-		Token: token,
-	}
-
-	return nil
-}
+// 	return nil
+// }
