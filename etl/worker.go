@@ -30,7 +30,7 @@ func InitWorker() error {
 		workDoc *SymbolWorkConfig
 		wg      *sync.WaitGroup
 	)
-
+	processConfig := NewProcessConfig(mg, api_key, tokenHandler.Fetch(), *workDoc)
 	for {
 		workDoc = mg.ApiQueue.Get()
 		if workDoc == nil {
@@ -38,7 +38,7 @@ func InitWorker() error {
 			break
 		}
 
-		processConfig := NewProcessConfig(mg, api_key, tokenHandler.Fetch(), *workDoc)
+		processConfig.SetWorkConfig(*workDoc)
 
 		var (
 			etl ProcessETL
