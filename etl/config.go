@@ -166,11 +166,15 @@ func CreateApiSuccess(body interface{}, workConfig SymbolWorkConfig) *ApiCallSuc
 	return &ApiCallSuccess{Body: body, WorkConfig: workConfig}
 }
 
-type ProcessETL interface {
+type ProcessETL[T any] interface {
 	// First step return the bottle necked api call retricting to a single consumer
 	// Reads from the queue which is a prerequisite
 	// Logs response
 	CallApi() (*ApiCallSuccess, error)
 	// Transforms and updates
-	Transform(apiCall *ApiCallSuccess) error
+	Transform(apiCall *ApiCallSuccess) (T, error)
+    Update()
 }
+
+// ProcessETL needs its own constructor to unify creation steps
+// each unique dataset will pass a config with all requirements

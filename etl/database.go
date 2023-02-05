@@ -12,6 +12,7 @@ import (
 )
 
 type MongoController struct {
+	database *mongo.Database
 	Macros   *mongo.Collection
 	Medium   *mongo.Collection
 	Short    *mongo.Collection
@@ -59,6 +60,7 @@ func Connect(mongoURI string) (*MongoController, error) {
 	}
 
 	return &MongoController{
+		database: db,
 		Macros:   db.Collection(Macros),
 		Medium:   db.Collection(Medium),
 		Short:    db.Collection(Short),

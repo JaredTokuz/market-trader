@@ -19,6 +19,8 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+// TODO run a test that as a prerequisite
+// fills the api queue
 func setup() error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -31,86 +33,26 @@ func setup() error {
 		return err
 	}
 
-	InitWorker()
+	mongo, err := Connect(os.Getenv("MONGO_URI"))
+	if err != nil {
+		log.Fatal("Database connection failed")
+	}
+
+	cursor, err := mongo.Macros.Find(context.TODO(), bson.M{"signal": true})
+	if err != nil {
+		log.Fatal("Issue in check daily avg volume", err)
+	}
+	// http response task
+	err = mongo.ApiQueue.Queue(cursor, Signals)
+	if err != nil {
+		log.Fatal("Work Queue up failed.")
+	}
 
 	return nil
 }
 
 func shutdown() {}
 
-func TestAppend(t *testing.T) {
-	cursor, err := mg.Stocks.Find(context.TODO(), bson.D{})
-	if err != nil {
-		t.Error("Issue in check daily avg volume", err)
-	}
-	workName := "YearDaily"
-	err = Append(workName, cursor, mg.Db)
-	if err != nil {
-		t.Error("append work failed", err)
-	}
-}
-
-func TestAppendWorkYearDaily(t *testing.T) {
-	cursor, err := mg.Stocks.Find(context.TODO(), bson.D{})
-	if err != nil {
-		t.Error("Stocks Find operation", err)
-	}
-	workName := "YearDaily"
-	err = Append(workName, cursor, mg.Db)
-	if err != nil {
-		t.Error("append work failed", err)
-	}
-	err = testWorker.InitWork()
-	if err != nil {
-		t.Error("init work failed", err)
-	}
-}
-
-func TestAppendWorkDay15Minute30(t *testing.T) {
-	cursor, err := mg.Stocks.Find(context.TODO(), bson.M{"fundamental.vol10DayAvg": bson.M{"$gt": 500000}})
-	if err != nil {
-		t.Error("Issue in check daily avg volume", err)
-	}
-	workName := "Day15Minute30"
-	err = Append(workName, cursor, mg.Db)
-	if err != nil {
-		t.Error("append work failed", err)
-	}
-	err = testWorker.InitWork()
-	if err != nil {
-		t.Error("init work failed", err)
-	}
-}
-
-// Since it is 2 days it will not work on sundays
-func TestAppendWorkDay2Minute15(t *testing.T) {
-	cursor, err := mg.Stocks.Find(context.TODO(), bson.M{"fundamental.vol10DayAvg": bson.M{"$gt": 500000}})
-	if err != nil {
-		t.Error("Issue in check daily avg volume", err)
-	}
-	workName := "Day2Minute15"
-	err = Append(workName, cursor, mg.Db)
-	if err != nil {
-		t.Error("append work failed", err)
-	}
-	err = testWorker.InitWork()
-	if err != nil {
-		t.Error("init work failed", err)
-	}
-}
-
-func TestAppendWorkMinute15Signals(t *testing.T) {
-	cursor, err := mg.Stocks.Find(context.TODO(), bson.M{"signal": true})
-	if err != nil {
-		t.Error("Issue in check daily avg volume", err)
-	}
-	workName := "Minute15Signals"
-	err = Append(workName, cursor, mg.Db)
-	if err != nil {
-		t.Error("append work failed", err)
-	}
-	err = testWorker.InitWork()
-	if err != nil {
-		t.Error("init work failed", err)
-	}
+func TestWorkerGeneral(t *testing.T) {
+	InitWorker()
 }
