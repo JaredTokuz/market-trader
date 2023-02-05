@@ -10,22 +10,22 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type medTermQuery struct {
+type short struct {
 	ProcessBuilder
 }
 
-func MedTermETL(config *ProcessConfig) ProcessETL {
+func ShortETL(config *ProcessConfig) ProcessETL {
 	processBuilder := NewProcessBuilder(config)
 	return &medTermQuery{processBuilder}
 }
 
-func (i *medTermQuery) CallApi() (*ApiCallSuccess, error) {
+func (i *short) CallApi() (*ApiCallSuccess, error) {
 	endDate := helpers.NextDay(helpers.Bod(time.Now()))
-	startDate := endDate.AddDate(0, 0, -15)
-	query := PriceHistoryQuery{
+	startDate := endDate.Add(time.Hour * -14)
+	var query = PriceHistoryQuery{
 		periodType:            "day",
 		frequencyType:         "minute",
-		frequency:             "30",
+		frequency:             "15",
 		startDate:             strconv.FormatInt(startDate.Unix()*1000, 10),
 		endDate:               strconv.FormatInt(endDate.Unix()*1000, 10),
 		needExtendedHoursData: "true",
@@ -33,7 +33,7 @@ func (i *medTermQuery) CallApi() (*ApiCallSuccess, error) {
 	return i.FetchPriceHistory(query)
 }
 
-func (i *medTermQuery) Transform(apiCall *ApiCallSuccess) error {
+func (i *short) Transform(apiCall *ApiCallSuccess) error {
 	ph := apiCall.Body.(PriceHistory)
 
 	prices, err := calculatePriceHistory(ph)
@@ -49,8 +49,8 @@ func (i *medTermQuery) Transform(apiCall *ApiCallSuccess) error {
 	return nil
 }
 
-func (i *medTermQuery) update(ph *PriceHistory) error {
-	_, err := i.Mongo().Medium.UpdateOne(context.TODO(),
+func (i *short) update(ph *PriceHistory) error {
+	_, err := i.Mongo().Short.UpdateOne(context.TODO(),
 		bson.M{"symbol": ph.Symbol},
 		bson.M{"$set": ph},
 		options.Update().SetUpsert(true))

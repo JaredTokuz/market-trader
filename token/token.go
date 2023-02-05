@@ -8,7 +8,7 @@ import (
 )
 
 type AccessTokenService interface {
-	Fetch() (string, error)
+	Fetch() string
 }
 
 type tokenHandler struct {
@@ -30,12 +30,12 @@ func NewAccessTokenService(file_path string) AccessTokenService {
 	}
 }
 
-func (a *tokenHandler) Fetch() (string, error) {
+func (a *tokenHandler) Fetch() string {
 	if a.isTokenExpired() == true {
 		accessTokenPayload := getAccessToken(a.Path)
 		a.Token = accessTokenPayload.data.RefreshToken
 	}
-	return a.Token, nil
+	return a.Token
 }
 
 func (a *tokenHandler) isTokenExpired() bool {

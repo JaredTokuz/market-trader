@@ -74,7 +74,7 @@ type Fundamental struct {
 	Vol3MonthAvg        int     `json:"vol3MonthAvg" bson:"vol3MonthAvg"`
 }
 
-func MacrosETL(config *ProcessConfig) ProcessETL[Instrument] {
+func MacrosETL(config *ProcessConfig) ProcessETL {
 	processBuilder := NewProcessBuilder(config)
 	return &instrumentQuery{processBuilder}
 }
@@ -106,7 +106,7 @@ func (i *instrumentQuery) CallApi() (*ApiCallSuccess, error) {
 	return CreateApiSuccess(body, i.WorkConfig()), nil
 }
 
-func (i *instrumentQuery) Transform(apiCall *ApiCallSuccess) (*Instrument, error) {
+func (i *instrumentQuery) Transform(apiCall *ApiCallSuccess) error {
 	instrument := apiCall.Body.(Instrument)
 
 	instrument.Fundamental.MarketCap = Round(instrument.Fundamental.MarketCap)
@@ -118,9 +118,9 @@ func (i *instrumentQuery) Transform(apiCall *ApiCallSuccess) (*Instrument, error
 			bson.M{"$set": bson.M{"marketCap": instrument.Fundamental.MarketCap}},
 			options.Update().SetUpsert(true))
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return &instrument, nil
+		return nil
 	}
 
 	instrument.Fundamental.High52 = Round(instrument.Fundamental.High52)
@@ -158,10 +158,10 @@ func (i *instrumentQuery) Transform(apiCall *ApiCallSuccess) (*Instrument, error
 
 	err := i.update(instrument)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &instrument, nil
+	return nil
 }
 
 func (i *instrumentQuery) update(intruments Instrument) error {

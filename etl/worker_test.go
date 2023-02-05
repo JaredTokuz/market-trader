@@ -7,7 +7,6 @@ import (
 	"path"
 	"testing"
 
-	"github.com/jaredtokuz/market-trader/token"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -32,28 +31,7 @@ func setup() error {
 		return err
 	}
 
-	// Connect to the database
-	mg, err := Connect(os.Getenv("MONGO_URI"))
-	if err != nil {
-		log.Fatal(err)
-		return err
-	}
-	tokenHandler := token.NewAccessTokenService(os.Getenv("TOKEN_PATH"))
-	api_key := os.Getenv("API_KEY")
-	token, err := tokenHandler.Fetch()
-	if err != nil {
-		log.Fatal("token fetch failed", err)
-	}
-	processConfig := NewProcessConfig(mg, api_key, token, SymbolWorkConfig{Symbol: "TSLA", Work: Macros})
-	macrosETL := MacrosETL(processConfig)
-	resp, err := macrosETL.CallApi()
-	if err != nil {
-		log.Fatal("ETL call api failed", err)
-	}
-	_, err = macrosETL.Transform(resp)
-	if err != nil {
-		log.Fatal("ETL call api failed", err)
-	}
+	InitWorker()
 
 	return nil
 }
@@ -136,47 +114,3 @@ func TestAppendWorkMinute15Signals(t *testing.T) {
 		t.Error("init work failed", err)
 	}
 }
-
-// var testWorker Worker
-
-// type MongoTestInstance struct {
-// 	Client *mongo.Client
-// 	Db     *mongo.Database
-// 	Stocks *mongo.Collection
-// 	Token  *mongo.Collection
-// }
-
-// var mg MongoTestInstance
-
-// func Connect() error {
-// 	mongoURI := os.Getenv("MONGO_URI")
-// 	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
-// 	if err != nil {
-// 		return err
-// 	}
-// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-// 	defer cancel()
-
-// 	err = client.Connect(ctx)
-// 	db := client.Database(os.Getenv("DB_NAME"))
-
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	stocks := db.Collection("stocks")
-// 	token := client.Database(os.Getenv("PROD_DB_NAME")).Collection("toke")
-
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	mg = MongoTestInstance{
-// 		Client: client,
-// 		Db:     db,
-// 		Stocks: stocks,
-// 		Token:  token,
-// 	}
-
-// 	return nil
-// }

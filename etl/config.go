@@ -13,14 +13,14 @@ import (
 )
 
 type ProcessConfig struct {
-	mongo      MongoController
+	mongo      *MongoController
 	apikey     string
 	token      string
 	workConfig SymbolWorkConfig
 }
 
 func NewProcessConfig(
-	mongo MongoController,
+	mongo *MongoController,
 	apikey string,
 	token string,
 	workConfig SymbolWorkConfig) *ProcessConfig {
@@ -63,7 +63,7 @@ func (p *ProcessConfig) InsertResponse(resp *http.Response, decodedBody interfac
 			request: helpers.FormatRequest(resp.Request),
 		},
 	}
-	_, err := p.mongo.ApiCalls().UpdateOne(context.TODO(),
+	_, err := p.mongo.ApiCalls.UpdateOne(context.TODO(),
 		bson.M{"symbol": p.workConfig.Symbol, "work": p.workConfig.Work},
 		bson.M{"$set": document},
 		options.Update().SetUpsert(true))
@@ -75,7 +75,7 @@ func (p *ProcessConfig) InsertResponse(resp *http.Response, decodedBody interfac
 
 // deletes the doc from the queue since its fully done
 func (p *ProcessConfig) Finish() error {
-	err := p.mongo.ApiQueue().Remove(p.workConfig)
+	err := p.mongo.ApiQueue.Remove(p.workConfig)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (p *ProcessConfig) AddApiKey(query *url.Values) {
 }
 
 func (p *ProcessConfig) Mongo() MongoController {
-	return p.mongo
+	return *p.mongo
 }
 
 func (p *ProcessConfig) WorkConfig() SymbolWorkConfig {
@@ -166,11 +166,11 @@ func CreateApiSuccess(body interface{}, workConfig SymbolWorkConfig) *ApiCallSuc
 	return &ApiCallSuccess{Body: body, WorkConfig: workConfig}
 }
 
-type ProcessETL[T any] interface {
+type ProcessETL interface {
 	// First step return the bottle necked api call retricting to a single consumer
 	// Reads from the queue which is a prerequisite
 	// Logs response
 	CallApi() (*ApiCallSuccess, error)
 	// Transforms and updates
-	Transform(apiCall *ApiCallSuccess) (*T, error)
+	Transform(apiCall *ApiCallSuccess) error
 }

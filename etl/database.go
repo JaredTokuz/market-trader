@@ -90,6 +90,7 @@ API QUEUE
 type ApiQueueService interface {
 	Queue(cursor *mongo.Cursor, workName Task) error
 	Remove(workConfig SymbolWorkConfig) error
+	Get() *SymbolWorkConfig
 }
 
 type apiQueue struct {
@@ -149,4 +150,17 @@ func (q *apiQueue) Remove(workConfig SymbolWorkConfig) error {
 		return err
 	}
 	return nil
+}
+
+func (q *apiQueue) Get() *SymbolWorkConfig {
+	var workConfig SymbolWorkConfig
+	result := q.apiqueue.FindOne(context.TODO(), bson.M{})
+	if result.Err() != nil {
+		return nil
+	}
+	err := result.Decode(&workConfig)
+	if err != nil {
+		return nil
+	}
+	return &workConfig
 }
