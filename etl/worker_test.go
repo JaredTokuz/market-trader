@@ -25,9 +25,7 @@ func setup() error {
 	if err != nil {
 		return err
 	}
-	envPath := path.Join(cwd, "../..", ".test.env")
-	log.Println(envPath)
-
+	envPath := path.Join(cwd, "../.env")
 	err = godotenv.Load(envPath)
 	if err != nil {
 		log.Fatal("Error loading .env file", err)
@@ -42,7 +40,21 @@ func setup() error {
 	}
 	tokenHandler := token.NewAccessTokenService(os.Getenv("TOKEN_PATH"))
 	api_key := os.Getenv("API_KEY")
-	_ = NewWorker(mg.Db, api_key, tokenHandler)
+	token, err := tokenHandler.Fetch()
+	if err != nil {
+		log.Fatal("token fetch failed", err)
+	}
+	processConfig := NewProcessConfig(mg, api_key, token, SymbolWorkConfig{Symbol: "TSLA", Work: Macros})
+	macrosETL := MacrosETL(processConfig)
+	resp, err := macrosETL.CallApi()
+	if err != nil {
+		log.Fatal("ETL call api failed", err)
+	}
+	_, err = macrosETL.Transform(resp)
+	if err != nil {
+		log.Fatal("ETL call api failed", err)
+	}
+
 	return nil
 }
 

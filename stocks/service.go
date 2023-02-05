@@ -10,23 +10,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jaredtokuz/market-trader/pkg/helpers"
+	"github.com/jaredtokuz/market-trader/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-//Service is an interface from which our api module can access our repository of all our models
+// Service is an interface from which our api module can access our repository of all our models
 type Service interface {
 	FindOneSymbol(collection string, symbol string) (*interface{}, error)
-	UploadStocks(filecontent multipart.File) (error)
+	UploadStocks(filecontent multipart.File) error
 }
 
 type service struct {
 	repository Repository
 }
 
-//NewService is used to create a single instance of the service
+// NewService is used to create a single instance of the service
 func NewService(r Repository) Service {
 	return &service{
 		repository: r,
@@ -37,7 +37,6 @@ func (s *service) FindOneSymbol(collection string, symbol string) (*interface{},
 	opts := options.FindOneOptions{}
 	return s.repository.FindOne(collection, bson.M{"symbol": symbol}, &opts)
 }
-
 
 /** functionality for the csv upload related to www.eoddata.com/download.aspx csv files: nasdaq & nyse */
 func (s *service) UploadStocks(fileContent multipart.File) error {
@@ -76,7 +75,6 @@ func (s *service) UploadStocks(fileContent multipart.File) error {
 			fmt.Println("Batch processed")
 		}
 
-		
 		update := bson.M{}
 		symbol := ""
 		for i, field := range line {
@@ -86,7 +84,7 @@ func (s *service) UploadStocks(fileContent multipart.File) error {
 			symbol = field
 			break
 		}
-		
+
 		if strings.Contains(symbol, ".") == true {
 			continue
 		}
@@ -95,15 +93,17 @@ func (s *service) UploadStocks(fileContent multipart.File) error {
 		}
 		fmt.Println(line)
 		update["symbol"] = symbol
-		
+
 		filter := bson.M{}
 		if update["symbol"] == nil {
 			return errors.New("Symbol is missing from the csv file there is something wrong here")
 		}
 		filter["symbol"] = update["symbol"]
-		operations = helpers.AppendUpsertOne(operations, filter, update)
+		operations = append(
+			operations,
+			mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(bson.M{"$set": update}).SetUpsert(true))
 	}
-	err = s.repository.UpdateOne("info", bson.M{}, bson.M{"$set": bson.M{"upload_stock_dt": time.Now()} }, &options.UpdateOptions{})
+	err = s.repository.UpdateOne("info", bson.M{}, bson.M{"$set": bson.M{"upload_stock_dt": time.Now()}}, &options.UpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,6 @@ func (s *service) UploadStocks(fileContent multipart.File) error {
 func million(i int) int {
 	return i * 1000 * 1000
 }
-
 
 /** old functionality for the csv upload related to nasdaq.com csv files: nasdaq & nyse */
 func (s *service) UploadStocksOld(fileContent multipart.File) error {
@@ -151,12 +150,12 @@ func (s *service) UploadStocksOld(fileContent multipart.File) error {
 		}
 
 		fmt.Println(line)
-		
+
 		update := bson.M{}
 		marketCapFailed := false
 		for i, field := range line {
 			fmt.Printf("%d: %s\n", i, field)
-			if helpers.StringInSlice(columns[i], []string{"Symbol","Name","Market Cap","Country","IPO Year","Sector","Industry"}) == false {
+			if helpers.StringInSlice(columns[i], []string{"Symbol", "Name", "Market Cap", "Country", "IPO Year", "Sector", "Industry"}) == false {
 				continue // skip this column
 			}
 			/* filter out Market Cap */
@@ -177,13 +176,15 @@ func (s *service) UploadStocksOld(fileContent multipart.File) error {
 		if marketCapFailed == true {
 			continue
 		}
-		
+
 		filter := bson.M{}
 		if update["Symbol"] == nil {
 			return errors.New("Symbol is missing from the csv file there is something wrong here")
 		}
 		filter["Symbol"] = update["Symbol"]
-		operations = helpers.AppendUpsertOne(operations, filter, update)
+		operations = append(
+			operations,
+			mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(bson.M{"$set": update}).SetUpsert(true))
 		fmt.Println("The len of operations: ", len(operations))
 	}
 	return nil
