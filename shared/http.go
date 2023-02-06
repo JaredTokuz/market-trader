@@ -1,4 +1,4 @@
-package helpers
+package shared
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// formatRequest generates ascii representation of a request
+// generates ascii representation of a request
 func FormatRequest(r *http.Request) string {
 	// Create return string
 	var request []string

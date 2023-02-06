@@ -1,4 +1,4 @@
-package helpers
+package shared
 
 import "time"
 
@@ -8,5 +8,5 @@ func Bod(t time.Time) time.Time {
 }
 
 func NextDay(t time.Time) time.Time {
-	return t.AddDate(0,0,1)
+	return t.AddDate(0, 0, 1)
 }

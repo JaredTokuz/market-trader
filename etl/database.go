@@ -5,42 +5,22 @@ import (
 	"os"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type MongoController struct {
 	database *mongo.Database
-	Macros   *mongo.Collection
-	Medium   *mongo.Collection
-	Short    *mongo.Collection
-	Signals  *mongo.Collection
-	ApiQueue ApiQueueService
-	ApiCalls *mongo.Collection
-	Logs     *mongo.Collection
+	Macros   *mongo.Collection /* high level metrics data */
+	Medium   *mongo.Collection /* 15 days 30 minutes longer trends */
+	Short    *mongo.Collection /* 2 days 15 minutes 56 bars algo... analysis backtesting */
+	Signals  *mongo.Collection /* realtime dataset for a trader minimal, calc trade conditions, based on medium and short research */
+	ApiQueue ApiQueueService   /* Entry for the database queue for background */
+	ApiCalls ApiCallService    /* Logs of TD Ameritrade Responses */
+	Logs     *mongo.Collection /* Generic logs */
 }
 
-type Task string
-
-// Mongo Collection names OR Task Names
-const (
-	Undefined Task = "unknown"
-	Macros         = "Macros"
-	Medium         = "Medium"
-	Short          = "Short"
-	Signals        = "Signals"
-)
-
-// Other Mongo Collections
-const (
-	ApiQueue = "ApiQueue"
-	APICalls = "APICalls"
-	Logs     = "logs"
-)
-
-func Connect(mongoURI string) (*MongoController, error) {
+func NewMongoController(mongoURI string) (*MongoController, error) {
 	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		return nil, err
@@ -49,15 +29,11 @@ func Connect(mongoURI string) (*MongoController, error) {
 	defer cancel()
 
 	err = client.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	db := client.Database(os.Getenv("DB_NAME"))
-
-	if err != nil {
-		return nil, err
-	}
-
-	if err != nil {
-		return nil, err
-	}
 
 	return &MongoController{
 		database: db,
@@ -66,103 +42,7 @@ func Connect(mongoURI string) (*MongoController, error) {
 		Short:    db.Collection(Short),
 		Signals:  db.Collection(Signals),
 		ApiQueue: NewApiQueue(db),
-		ApiCalls: db.Collection(APICalls),
+		ApiCalls: NewApiCallService(db),
 		Logs:     db.Collection(Logs),
 	}, nil
-}
-
-type StockDoc struct {
-	ID     primitive.ObjectID `json:"_id,omitempty"  bson:"_id,omitempty"`
-	Symbol string             `json:"symbol"  bson:"symbol"`
-}
-
-type SymbolWorkConfig struct {
-	ID     primitive.ObjectID `bson:"_id,omitempty"`
-	Symbol string             `bson:"symbol"`
-	Work   Task               `bson:"work"`
-}
-
-/*
-API QUEUE
-|
-|
-|
-|
-*/
-type ApiQueueService interface {
-	Queue(cursor *mongo.Cursor, workName Task) error
-	Remove(workConfig SymbolWorkConfig) error
-	Get() *SymbolWorkConfig
-}
-
-type apiQueue struct {
-	apiqueue *mongo.Collection
-	logs     *mongo.Collection
-}
-
-func NewApiQueue(mg *mongo.Database) ApiQueueService {
-	return &apiQueue{apiqueue: mg.Collection(ApiQueue), logs: mg.Collection(Logs)}
-}
-
-func (q *apiQueue) Queue(cursor *mongo.Cursor, workName Task) error {
-	var operations []mongo.WriteModel
-	bulkOption := options.BulkWriteOptions{}
-	bulkOption.SetOrdered(false)
-
-	for cursor.Next(context.TODO()) {
-		if len(operations) == 100 {
-			_, err := q.apiqueue.BulkWrite(context.TODO(), operations, &bulkOption)
-			if err != nil {
-				return err
-			}
-			operations = nil
-		}
-		var result StockDoc
-		if err := cursor.Decode(&result); err != nil {
-			return err
-		}
-		field := SymbolWorkConfig{Symbol: result.Symbol, Work: workName} //bson.M{"symbol": result.Symbol, "work": workName}
-
-		operations = append(
-			operations,
-			mongo.NewUpdateOneModel().SetFilter(field).SetUpdate(bson.M{"$set": field}).SetUpsert(true))
-	}
-
-	if len(operations) != 0 {
-		_, err := q.apiqueue.BulkWrite(context.TODO(), operations, &bulkOption)
-		if err != nil {
-			return err
-		}
-	}
-
-	q.logs.InsertOne(context.TODO(), bson.M{
-		"desc":     "http queue up complete",
-		"workName": workName,
-		"init_dt":  time.Now(),
-	})
-
-	return nil
-}
-
-func (q *apiQueue) Remove(workConfig SymbolWorkConfig) error {
-	_, err := q.apiqueue.DeleteOne(
-		context.TODO(),
-		bson.M{"symbol": workConfig.Symbol, "work": workConfig.Work})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (q *apiQueue) Get() *SymbolWorkConfig {
-	var workConfig SymbolWorkConfig
-	result := q.apiqueue.FindOne(context.TODO(), bson.M{})
-	if result.Err() != nil {
-		return nil
-	}
-	err := result.Decode(&workConfig)
-	if err != nil {
-		return nil
-	}
-	return &workConfig
 }

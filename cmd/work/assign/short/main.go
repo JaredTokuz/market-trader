@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	mongo, err := etl.Connect(os.Getenv("MONGO_URI"))
+	mongo, err := etl.NewMongoController(os.Getenv("MONGO_URI"))
 	if err != nil {
 		log.Fatal("Database connection failed")
 	}
