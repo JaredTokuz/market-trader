@@ -5,6 +5,11 @@ go 1.18
 require github.com/gofiber/fiber/v2 v2.31.0
 
 require (
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.2 // indirect
+)
+
+require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.1 // indirect

@@ -34,7 +34,7 @@ func InitWorker() error {
 		}
 
 		success, err := tdApiService.Call(*workDoc)
-		time.Sleep(200) // change this to backoff retry
+		time.Sleep(800) // change this to backoff retry
 		if err != nil {
 			mg.Logs.InsertOne(context.TODO(), bson.M{"msg": err.Error(), "category": "TD Call"})
 		}

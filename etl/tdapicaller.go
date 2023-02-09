@@ -10,6 +10,8 @@ import (
 
 	"github.com/jaredtokuz/market-trader/shared"
 	"github.com/jaredtokuz/market-trader/token"
+
+	retryablehttp "github.com/hashicorp/go-retryablehttp"
 )
 
 type tdapiconfig struct {
@@ -34,12 +36,19 @@ func NewTDApiService(
 }
 
 func (i *tdapiconfig) Call(etlConfig EtlConfig) (*ApiCallSuccess, error) {
-	client := http.Client{}
+	retryClient := retryablehttp.NewClient()
+
+	retryClient.RetryMax = 4
+	retryClient.RetryWaitMin = time.Duration(1)*time.Second
+	retryClient.RetryWaitMin = time.Duration(3)*time.Second
+
+	client := retryClient.StandardClient() // convert to *http.Client
 
 	var (
 		req *http.Request
 		err error
 	)
+	// Dynamically set url/method
 	switch etlConfig.Work {
 	case Macros:
 		req, err = http.NewRequest("GET", InstrumentsUrl, nil)
@@ -50,6 +59,7 @@ func (i *tdapiconfig) Call(etlConfig EtlConfig) (*ApiCallSuccess, error) {
 	i.AddAuth(req)
 	i.AddApiKey(&query)
 
+	// Dynamically add query params
 	switch etlConfig.Work {
 	case Macros:
 		query.Add("projection", "fundamental")
