@@ -13,7 +13,7 @@ import (
 )
 
 func InitWorker() error {
-	mg, err := NewMongoController(os.Getenv("MONGO_URI"))
+	mg, err := NewMongoController(os.Getenv("MONGO_URI"), os.Getenv("DB_NAME"))
 	if err != nil {
 		log.Fatal(err)
 		return err

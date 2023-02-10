@@ -2,6 +2,7 @@ package etl
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -31,6 +32,7 @@ func (q *apiQueue) Queue(cursor *mongo.Cursor, workName EtlJob) error {
 
 	for cursor.Next(context.TODO()) {
 		if len(operations) == 100 {
+			log.Println("BulkWrite: ", len(operations), operations[0], time.Now().Format(time.RFC3339Nano))
 			_, err := q.apiqueue.BulkWrite(context.TODO(), operations, &bulkOption)
 			if err != nil {
 				return err
@@ -76,11 +78,7 @@ func (q *apiQueue) Remove(etlConfig EtlConfig) error {
 
 func (q *apiQueue) Get() *EtlConfig {
 	var etlConfig EtlConfig
-	result := q.apiqueue.FindOne(context.TODO(), bson.M{})
-	if result.Err() != mongo.ErrNoDocuments {
-		return nil
-	}
-	err := result.Decode(&etlConfig)
+	err := q.apiqueue.FindOne(context.TODO(), bson.D{}).Decode(&etlConfig)
 	if err != nil {
 		return nil
 	}

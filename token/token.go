@@ -21,7 +21,7 @@ func NewAccessTokenService(file_path string) AccessTokenService {
 	accessTokenPayload := getAccessToken(file_path)
 	access_response_date, err := time.Parse(time.RFC1123, accessTokenPayload.headers.Date)
 	if err != nil {
-		log.Fatal("parsing access token header date", err.Error())
+		log.Fatal("Failure to parse access token header date", err.Error())
 	}
 	return &tokenHandler{
 		Path:       file_path,
