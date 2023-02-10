@@ -25,7 +25,7 @@ done
 >&2 echo "Mongo is up and running on port ${DB_PORT} - running migrations now!"
 
 # Example command to run a migration 
-# Databases are auto created when collections are first inserted
-# docker exec mongo bash -c "mongosh --eval use ${DB_NAME}";
+docker exec mongo mongosh ${DB_NAME} --eval "db.createCollection('Macros')"
+docker exec mongo mongosh ${DB_NAME} --eval "db.Macros.createIndex( { symbol: 1 }, { unique: true } )"
 
 >&2 echo "Mongo has been setup, ready to go!"
