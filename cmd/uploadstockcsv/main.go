@@ -28,7 +28,7 @@ type record struct {
 func main() {
 	// Connect to MongoDB
 	fmt.Println(os.Getenv("MONGO_URI"))
-	mongoController, err := etl.NewMongoController(os.Getenv("MONGO_URI"))
+	mongoController, err := etl.NewMongoController(os.Getenv("MONGO_URI"), os.Getenv("DB_NAME"))
 	if err != nil {
 		fmt.Println("Mongo Controller failed to create", err)
 		os.Exit(1)

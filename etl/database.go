@@ -2,7 +2,7 @@ package etl
 
 import (
 	"context"
-	"os"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,7 +20,7 @@ type MongoController struct {
 	Logs     *mongo.Collection /* Generic logs */
 }
 
-func NewMongoController(mongoURI string) (*MongoController, error) {
+func NewMongoController(mongoURI string, database_name string) (*MongoController, error) {
 	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		return nil, err
@@ -32,9 +32,14 @@ func NewMongoController(mongoURI string) (*MongoController, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	db := client.Database(os.Getenv("DB_NAME"))
-
+	log.Println("Database connecting to ", database_name)
+	db := client.Database(database_name)
+	err = db.Client().Ping(ctx, nil)
+	if err != nil {
+		log.Fatal("Database failed to ping ", err)
+		return nil, err
+	}
+	log.Println("MongoController ready")
 	return &MongoController{
 		database: db,
 		Macros:   db.Collection(Macros),

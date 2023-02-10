@@ -26,6 +26,5 @@ done
 
 # Example command to run a migration 
 # Databases are auto created when collections are first inserted
-# docker exec mongo bash -c "mongosh --eval use ${DB_NAME}";
 
 >&2 echo "Mongo has been setup, ready to go!"
