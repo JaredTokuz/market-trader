@@ -30,17 +30,14 @@ func calculatePriceHistory(ph PriceHistory) (*PriceHistory, error) {
 
 	// add new fields to create new struct
 	var adjCandles []Candle
-	var zscore float64
 	for _, candle := range ph.Candles {
-		zscore = Round1((float64(candle.Volume) - meanVol) / stdVol)
 		adjCandles = append(adjCandles, Candle{
-			Volume:    candle.Volume,
-			High:      candle.High,
-			Low:       candle.Low,
-			Open:      candle.Open,
-			Close:     candle.Close,
-			Datetime:  candle.Datetime,
-			VolZScore: zscore,
+			Volume:   candle.Volume,
+			High:     Round(candle.High),
+			Low:      Round(candle.Low),
+			Open:     Round(candle.Open),
+			Close:    Round(candle.Close),
+			Datetime: candle.Datetime,
 		})
 	}
 
@@ -65,13 +62,12 @@ func Round(number float64) float64 {
 }
 
 type Candle struct {
-	Datetime  uint64  `json:"datetime" bson:"datetime"`
-	Close     float32 `json:"close" bson:"close"`
-	High      float32 `json:"high" bson:"high"`
-	Low       float32 `json:"low" bson:"low"`
-	Open      float32 `json:"open" bson:"open"`
-	Volume    int     `json:"volume" bson:"volume"`
-	VolZScore float64 `json:"volzscore" bson:"volzscore"`
+	Datetime uint64  `json:"datetime" bson:"datetime"`
+	Close    float64 `json:"close" bson:"close"`
+	High     float64 `json:"high" bson:"high"`
+	Low      float64 `json:"low" bson:"low"`
+	Open     float64 `json:"open" bson:"open"`
+	Volume   int     `json:"volume" bson:"volume"`
 }
 
 type PriceHistory struct {

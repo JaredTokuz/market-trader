@@ -2,8 +2,8 @@ package token
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
-	"os"
 	"time"
 )
 
@@ -19,21 +19,21 @@ type tokenHandler struct {
 
 func NewAccessTokenService(file_path string) AccessTokenService {
 	accessTokenPayload := getAccessToken(file_path)
-	access_response_date, err := time.Parse(time.RFC1123, accessTokenPayload.headers.Date)
+	access_response_date, err := time.Parse(time.RFC1123, accessTokenPayload.Headers.Date)
 	if err != nil {
 		log.Fatal("Failure to parse access token header date", err.Error())
 	}
 	return &tokenHandler{
 		Path:       file_path,
-		Token:      accessTokenPayload.data.RefreshToken,
-		Expiration: access_response_date.Add(time.Second * time.Duration(accessTokenPayload.data.ExpiresIn)),
+		Token:      accessTokenPayload.Data.AccessToken,
+		Expiration: access_response_date.Add(time.Second * time.Duration(accessTokenPayload.Data.ExpiresIn)),
 	}
 }
 
 func (a *tokenHandler) Fetch() string {
 	if a.isTokenExpired() == true {
 		accessTokenPayload := getAccessToken(a.Path)
-		a.Token = accessTokenPayload.data.RefreshToken
+		a.Token = accessTokenPayload.Data.AccessToken
 	}
 	return a.Token
 }
@@ -43,8 +43,8 @@ func (a *tokenHandler) isTokenExpired() bool {
 }
 
 type accessTokenPayload struct {
-	headers accessTokenHeader
-	data    accessTokenData
+	Headers accessTokenHeader
+	Data    accessTokenData
 }
 
 type accessTokenHeader struct {
@@ -52,18 +52,17 @@ type accessTokenHeader struct {
 }
 
 type accessTokenData struct {
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"`
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
 }
 
 func getAccessToken(file_path string) accessTokenPayload {
-	tokenFile, err := os.Open(file_path)
+	tokenFile, err := ioutil.ReadFile(file_path)
 	if err != nil {
 		log.Fatal("opening config file", err.Error())
 	}
-	jsonParser := json.NewDecoder(tokenFile)
-	var accessTokenPayload = accessTokenPayload{}
-	if err = jsonParser.Decode(&accessTokenPayload); err != nil {
+	accessTokenPayload := accessTokenPayload{}
+	if err = json.Unmarshal(tokenFile, &accessTokenPayload); err != nil {
 		log.Fatal("parsing config file", err.Error())
 	}
 	return accessTokenPayload

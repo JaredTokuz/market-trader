@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -121,7 +122,11 @@ func initializeQueueData(docs []SymbolDoc, job EtlJob) {
 
 	_, err := mc.Macros.InsertMany(context.TODO(), data, options.InsertMany().SetOrdered(false))
 	if err != nil {
-		log.Fatal("insert step failed. ", err)
+		if strings.Contains(err.Error(), "duplicate key error collection") {
+			log.Println("Duplicate key error. Skipping.")
+		} else {
+			log.Fatal("insert step failed. ", err)
+		}
 	}
 
 	queueMacros(job)
@@ -194,18 +199,16 @@ func TestCall(t *testing.T) {
 		}
 		_, err := td.Call(c)
 		if err != nil {
-			t.Error("Call failed")
+			t.Error("Call failed", err)
 		}
 		time.Sleep(500)
 		// check if logged
-		found := db.Collection(APICalls).FindOne(context.TODO(), bson.M{})
-		if found != nil {
-			t.Error("Not cached in logs")
-		}
 		var doc *HttpResponsesDocument
-		found.Decode(&doc)
+		if err := db.Collection(APICalls).FindOne(context.TODO(), bson.M{"work": c.Work, "symbol": c.Symbol}).Decode(&doc); err != nil {
+			t.Error("Failed to find doc in db")
+		}
 		if doc.Response.Status != 200 {
-			t.Error("Response status was not 200")
+			t.Error("Response status was not 200", c)
 		}
 		if doc.EtlConfig.Symbol != c.Symbol || doc.EtlConfig.Work != c.Work {
 			t.Error("configs dont match")

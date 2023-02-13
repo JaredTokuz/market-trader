@@ -39,8 +39,8 @@ func (i *tdapiconfig) Call(etlConfig EtlConfig) (*ApiCallSuccess, error) {
 	retryClient := retryablehttp.NewClient()
 
 	retryClient.RetryMax = 4
-	retryClient.RetryWaitMin = time.Duration(1)*time.Second
-	retryClient.RetryWaitMin = time.Duration(3)*time.Second
+	retryClient.RetryWaitMin = time.Duration(1) * time.Second
+	retryClient.RetryWaitMin = time.Duration(3) * time.Second
 
 	client := retryClient.StandardClient() // convert to *http.Client
 
@@ -99,7 +99,7 @@ func (i *tdapiconfig) Call(etlConfig EtlConfig) (*ApiCallSuccess, error) {
 	err = json.NewDecoder(resp.Body).Decode(&body)
 	i.InsertResponse(etlConfig, resp, body)
 	if resp.StatusCode >= 400 {
-		return nil, errors.New("Api call failed")
+		return nil, errors.New("Api call failed with status code: " + strconv.Itoa(resp.StatusCode))
 	}
 	return CreateApiSuccess(body, etlConfig), nil
 }

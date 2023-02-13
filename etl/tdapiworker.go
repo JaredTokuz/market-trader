@@ -23,7 +23,7 @@ func InitWorker() error {
 
 	var (
 		workDoc *EtlConfig
-		wg      *sync.WaitGroup
+		wg      sync.WaitGroup
 	)
 	tdApiService := NewTDApiService(mg, api_key, tokenHandler)
 	for {
