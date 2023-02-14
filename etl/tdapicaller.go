@@ -3,15 +3,16 @@ package etl
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/jaredtokuz/market-trader/shared"
 	"github.com/jaredtokuz/market-trader/token"
-
-	retryablehttp "github.com/hashicorp/go-retryablehttp"
 )
 
 type tdapiconfig struct {
@@ -36,71 +37,110 @@ func NewTDApiService(
 }
 
 func (i *tdapiconfig) Call(etlConfig EtlConfig) (*ApiCallSuccess, error) {
-	retryClient := retryablehttp.NewClient()
+	// retryClient := retryablehttp.NewClient() //.Backoff(time.Duration(2)*time.Second, time.Duration(5)*time.Second, 5, resp) //LinearJitterBackoff(time.Duration(1)*time.Second, time.Duration(3)*time.Second, 5, resp)
 
-	retryClient.RetryMax = 4
-	retryClient.RetryWaitMin = time.Duration(1) * time.Second
-	retryClient.RetryWaitMin = time.Duration(3) * time.Second
+	// retryClient.RetryMax = 4
+	// retryClient.RetryWaitMin = time.Duration(1) * time.Second
+	// retryClient.RetryWaitMin = time.Duration(3) * time.Second
 
-	client := retryClient.StandardClient() // convert to *http.Client
+	// client := retryClient.StandardClient() // convert to *http.Client
+	client := &http.Client{}
 
 	var (
-		req *http.Request
-		err error
+		body interface{}
 	)
-	// Dynamically set url/method
-	switch etlConfig.Work {
-	case Macros:
-		req, err = http.NewRequest("GET", InstrumentsUrl, nil)
-	case Medium, Short, Signals:
-		req, err = http.NewRequest("GET", PriceHistoryUrl(etlConfig.Symbol), nil)
-	}
-	query := req.URL.Query()
-	i.AddAuth(req)
-	i.AddApiKey(&query)
+	err := retry.Do(
+		func() error {
+			var (
+				req *http.Request
+				err error
+			)
+			// Dynamically set url/method
+			switch etlConfig.Work {
+			case Macros:
+				req, err = http.NewRequest("GET", InstrumentsUrl, nil)
+			case Medium, Short, Signals:
+				req, err = http.NewRequest("GET", PriceHistoryUrl(etlConfig.Symbol), nil)
+			}
+			query := req.URL.Query()
+			i.AddAuth(req)
+			i.AddApiKey(&query)
 
-	// Dynamically add query params
-	switch etlConfig.Work {
-	case Macros:
-		query.Add("projection", "fundamental")
-		query.Add("symbol", etlConfig.Symbol)
-	case Medium:
-		endDate := shared.NextDay(shared.Bod(time.Now()))
-		startDate := endDate.AddDate(0, 0, -15)
-		i.AddFetchPriceHistoryQuery(&query, PriceHistoryQuery{
-			periodType:            "day",
-			frequencyType:         "minute",
-			frequency:             "30",
-			startDate:             stringFormatDate(startDate),
-			endDate:               stringFormatDate(endDate),
-			needExtendedHoursData: "true",
-		})
-	case Short, Signals:
-		endDate := shared.NextDay(shared.Bod(time.Now()))
-		startDate := endDate.Add(time.Hour * -14)
-		i.AddFetchPriceHistoryQuery(&query, PriceHistoryQuery{
-			periodType:            "day",
-			frequencyType:         "minute",
-			frequency:             "15",
-			startDate:             stringFormatDate(startDate),
-			endDate:               stringFormatDate(endDate),
-			needExtendedHoursData: "true",
-		})
-	}
+			// Dynamically add query params
+			switch etlConfig.Work {
+			case Macros:
+				query.Add("projection", "fundamental")
+				query.Add("symbol", etlConfig.Symbol)
+			case Medium:
+				endDate := shared.NextDay(shared.Bod(time.Now()))
+				startDate := endDate.AddDate(0, 0, -15)
+				i.AddFetchPriceHistoryQuery(&query, PriceHistoryQuery{
+					periodType:            "day",
+					frequencyType:         "minute",
+					frequency:             "30",
+					startDate:             stringFormatDate(startDate),
+					endDate:               stringFormatDate(endDate),
+					needExtendedHoursData: "true",
+				})
+			case Short, Signals:
+				endDate := shared.NextDay(shared.Bod(time.Now()))
+				startDate := endDate.Add(time.Hour * -14)
+				i.AddFetchPriceHistoryQuery(&query, PriceHistoryQuery{
+					periodType:            "day",
+					frequencyType:         "minute",
+					frequency:             "15",
+					startDate:             stringFormatDate(startDate),
+					endDate:               stringFormatDate(endDate),
+					needExtendedHoursData: "true",
+				})
+			}
 
-	req.URL.RawQuery = query.Encode()
-	resp, err := client.Do(req)
+			req.URL.RawQuery = query.Encode()
+			resp, err := client.Do(req)
+			if err != nil {
+				panic(err)
+			}
+
+			defer resp.Body.Close()
+			err = json.NewDecoder(resp.Body).Decode(&body)
+			i.InsertResponse(etlConfig, resp, body)
+			if resp.StatusCode >= 400 {
+				if resp.StatusCode == 401 {
+					return errors.New(UNAUTHORIZED)
+				}
+				if resp.StatusCode >= 500 {
+					return errors.New(SERVER_ERROR)
+				}
+				return errors.New("Api call failed with status code: " + strconv.Itoa(resp.StatusCode))
+			}
+
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
+		retry.RetryIf(func(err error) bool {
+			if err.Error() == SERVER_ERROR {
+				return true
+			}
+			return false
+		}),
+		retry.Attempts(10),
+		retry.OnRetry(func(n uint, err error) {
+			log.Printf("Retrying request after error: %v", err)
+		}),
+		retry.DelayType(func(n uint, err error, config *retry.Config) time.Duration {
+			fmt.Println("Server fails with: " + err.Error())
+			// apply a default exponential back off strategy
+			return retry.BackOffDelay(n, err, config)
+		}),
+	)
+
 	if err != nil {
 		return nil, err
 	}
 
-	defer resp.Body.Close()
-	var body interface{}
-	err = json.NewDecoder(resp.Body).Decode(&body)
-	i.InsertResponse(etlConfig, resp, body)
-	if resp.StatusCode >= 400 {
-		return nil, errors.New("Api call failed with status code: " + strconv.Itoa(resp.StatusCode))
-	}
 	return CreateApiSuccess(body, etlConfig), nil
 }
 
@@ -136,9 +176,9 @@ func (i *tdapiconfig) InsertResponse(etlConfig EtlConfig, resp *http.Response, d
 	document := HttpResponsesDocument{
 		EtlConfig: etlConfig,
 		Response: APIResponse{
-			Body:    decodedBody,
-			Status:  resp.StatusCode,
-			Request: shared.FormatRequest(resp.Request),
+			Body:   decodedBody,
+			Status: resp.StatusCode,
+			// Request: shared.FormatRequest(resp.Request),
 		},
 	}
 	err := i.mongo.ApiCalls.Cache(etlConfig, document)

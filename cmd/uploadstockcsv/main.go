@@ -17,7 +17,7 @@ import (
 	"github.com/jaredtokuz/market-trader/etl"
 )
 
-var columns = []string{"symbol"}
+var columns = []string{"symbol", "volume"}
 
 type record struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"`
@@ -64,6 +64,7 @@ func main() {
 
 	fmt.Print("Reading rows in... \n")
 
+	var volume int
 	// Read the data rows
 	for {
 		row, err := reader.Read()
@@ -85,16 +86,21 @@ func main() {
 
 			value := row[index]
 			switch column {
-			case "column_2":
+			case "volume":
 				v, err := strconv.Atoi(value)
 				if err != nil {
 					fmt.Println(err)
 					os.Exit(1)
 				}
-				data[column] = v
+				volume = v
 			default:
 				data[column] = value
 			}
+		}
+
+		if volume < 200000 {
+			fmt.Println("Volume too low", volume)
+			continue
 		}
 
 		// Insert the data into MongoDB
@@ -112,6 +118,7 @@ func main() {
 			fmt.Println("Upsert failed", err)
 			os.Exit(1)
 		}
+		fmt.Println("Upserted", data["symbol"])
 	}
 	fmt.Print("Upload Completed \n")
 }

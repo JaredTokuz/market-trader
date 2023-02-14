@@ -1,2 +1,3 @@
-source .env
-scp -r ./dist "$SSH_HOST":
+#!/usr/bin/env bash
+
+scp -r ./dist "$SSH_HOST"

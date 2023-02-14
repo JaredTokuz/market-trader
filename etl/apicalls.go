@@ -26,9 +26,9 @@ type HttpResponsesDocument struct {
 }
 
 type APIResponse struct {
-	Body    interface{} `json:"body"  bson:"body"`
-	Status  int         `json:"status"  bson:"status"`
-	Request string      `json:"request"  bson:"request"`
+	Body   interface{} `json:"body"  bson:"body"`
+	Status int         `json:"status"  bson:"status"`
+	// Request string      `json:"request"  bson:"request"`
 }
 
 func (q *apiCalls) Cache(etlConfig EtlConfig, document HttpResponsesDocument) error {

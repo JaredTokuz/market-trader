@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// TODO change this to not show all this information, just the url but scrub out the apikey
 // generates ascii representation of a request
 func FormatRequest(r *http.Request) string {
 	// Create return string

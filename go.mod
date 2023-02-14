@@ -5,6 +5,7 @@ go 1.18
 require github.com/gofiber/fiber/v2 v2.31.0
 
 require (
+	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.11.2 // indirect

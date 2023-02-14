@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	mongo, err := etl.NewMongoController(os.Getenv("MONGO_URI"), os.Getenv("MONGO_DB"))
+	mongo, err := etl.NewMongoController(os.Getenv("MONGO_URI"), os.Getenv("DB_NAME"))
 	if err != nil {
 		log.Fatal("Database connection failed")
 	}
