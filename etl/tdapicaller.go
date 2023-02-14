@@ -178,7 +178,7 @@ func (i *tdapiconfig) InsertResponse(etlConfig EtlConfig, resp *http.Response, d
 		Response: APIResponse{
 			Body:   decodedBody,
 			Status: resp.StatusCode,
-			// Request: shared.FormatRequest(resp.Request),
+			Path: resp.Request.URL.Path,
 		},
 	}
 	err := i.mongo.ApiCalls.Cache(etlConfig, document)
