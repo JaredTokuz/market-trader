@@ -12,9 +12,8 @@ import (
 func TransformLoad(mongo MongoController, resp ApiCallSuccess) error {
 	switch resp.etlConfig.Work {
 	case Macros:
-		i := resp.Body.(map[string]interface{})
 		var instrument Instrument
-		b, err := json.Marshal(i[resp.etlConfig.Symbol])
+		b, err := json.Marshal(resp.Body[resp.etlConfig.Symbol])
 		json.Unmarshal(b, &instrument)
 
 		*instrument.Fundamental.MarketCap = Round(*instrument.Fundamental.MarketCap)

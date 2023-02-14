@@ -47,7 +47,7 @@ func (i *tdapiconfig) Call(etlConfig EtlConfig) (*ApiCallSuccess, error) {
 	client := &http.Client{}
 
 	var (
-		body interface{}
+		body map[string]interface{}
 	)
 	err := retry.Do(
 		func() error {
@@ -133,7 +133,7 @@ func (i *tdapiconfig) Call(etlConfig EtlConfig) (*ApiCallSuccess, error) {
 		retry.DelayType(func(n uint, err error, config *retry.Config) time.Duration {
 			fmt.Println("Server fails with: " + err.Error())
 			// apply a default exponential back off strategy
-			return retry.BackOffDelay(n, err, config)
+			return retry.BackOffDelay(n, err, config) + (time.Millisecond * 750 * time.Duration(n)) + (1 * time.Second)
 		}),
 	)
 
@@ -189,11 +189,11 @@ func (i *tdapiconfig) InsertResponse(etlConfig EtlConfig, resp *http.Response, d
 }
 
 type ApiCallSuccess struct {
-	Body      interface{}
+	Body      map[string]interface{}
 	etlConfig EtlConfig
 }
 
-func CreateApiSuccess(body interface{}, etlConfig EtlConfig) *ApiCallSuccess {
+func CreateApiSuccess(body map[string]interface{}, etlConfig EtlConfig) *ApiCallSuccess {
 	return &ApiCallSuccess{Body: body, etlConfig: etlConfig}
 }
 
