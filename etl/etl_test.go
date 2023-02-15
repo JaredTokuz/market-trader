@@ -234,7 +234,7 @@ func TestTransformLoad(t *testing.T) {
 		if err != nil {
 			t.Error("Call failed")
 		}
-		err = TransformLoad(*mc, *success)
+		err = TransformLoad(*mc, success)
 		if err != nil {
 
 		}

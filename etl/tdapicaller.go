@@ -22,7 +22,7 @@ type tdapiconfig struct {
 }
 
 type TDApiService interface {
-	Call(etlConfig EtlConfig) (*ApiCallSuccess, error)                                      /* Makes a request */
+	Call(etlConfig EtlConfig) (ApiCallSuccess, error)                                       /* Makes a request */
 	AddAuth(req *http.Request)                                                              /* helper */
 	AddApiKey(req *url.Values)                                                              /* helper */
 	InsertResponse(etlConfig EtlConfig, resp *http.Response, decodedBody interface{}) error /* log api response */
@@ -36,7 +36,7 @@ func NewTDApiService(
 	return &tdapiconfig{mongo: mongo, apikey: apikey, token: token}
 }
 
-func (i *tdapiconfig) Call(etlConfig EtlConfig) (*ApiCallSuccess, error) {
+func (i *tdapiconfig) Call(etlConfig EtlConfig) (ApiCallSuccess, error) {
 	// retryClient := retryablehttp.NewClient() //.Backoff(time.Duration(2)*time.Second, time.Duration(5)*time.Second, 5, resp) //LinearJitterBackoff(time.Duration(1)*time.Second, time.Duration(3)*time.Second, 5, resp)
 
 	// retryClient.RetryMax = 4
@@ -108,6 +108,9 @@ func (i *tdapiconfig) Call(etlConfig EtlConfig) (*ApiCallSuccess, error) {
 				if resp.StatusCode == 401 {
 					return errors.New(UNAUTHORIZED)
 				}
+				if resp.StatusCode == 429 {
+					return errors.New(SERVER_ERROR)
+				}
 				if resp.StatusCode >= 500 {
 					return errors.New(SERVER_ERROR)
 				}
@@ -133,13 +136,15 @@ func (i *tdapiconfig) Call(etlConfig EtlConfig) (*ApiCallSuccess, error) {
 		retry.DelayType(func(n uint, err error, config *retry.Config) time.Duration {
 			fmt.Println("Server fails with: " + err.Error())
 			// apply a default exponential back off strategy
-			return retry.BackOffDelay(n, err, config) + (time.Millisecond * 750 * time.Duration(n)) + (1 * time.Second)
+			return retry.BackOffDelay(n, err, config) + (time.Millisecond * 750 * (time.Duration(n * 16 / 10))) + (1 * time.Second)
 		}),
 	)
 
 	if err != nil {
-		return nil, err
+		return ApiCallSuccess{}, err
 	}
+
+	log.Println("Api call success: ", etlConfig.Symbol)
 
 	return CreateApiSuccess(body, etlConfig), nil
 }
@@ -178,7 +183,7 @@ func (i *tdapiconfig) InsertResponse(etlConfig EtlConfig, resp *http.Response, d
 		Response: APIResponse{
 			Body:   decodedBody,
 			Status: resp.StatusCode,
-			Path: resp.Request.URL.Path,
+			Path:   resp.Request.URL.Path,
 		},
 	}
 	err := i.mongo.ApiCalls.Cache(etlConfig, document)
@@ -193,8 +198,8 @@ type ApiCallSuccess struct {
 	etlConfig EtlConfig
 }
 
-func CreateApiSuccess(body map[string]interface{}, etlConfig EtlConfig) *ApiCallSuccess {
-	return &ApiCallSuccess{Body: body, etlConfig: etlConfig}
+func CreateApiSuccess(body map[string]interface{}, etlConfig EtlConfig) ApiCallSuccess {
+	return ApiCallSuccess{Body: body, etlConfig: etlConfig}
 }
 
 func stringFormatDate(t time.Time) string {

@@ -15,7 +15,7 @@ func main() {
 		log.Fatal("Database connection failed")
 	}
 
-	cursor, err := mongo.Macros.Find(context.TODO(), bson.M{"fundamental.vol10DayAvg": bson.M{"$gt": 500000}})
+	cursor, err := mongo.Macros.Find(context.TODO(), bson.M{"fundamental.vol10DayAvg": bson.M{"$gt": 2000000}})
 	if err != nil {
 		log.Fatal("Issue in check daily avg volume", err)
 	}

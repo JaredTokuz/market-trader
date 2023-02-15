@@ -3,6 +3,7 @@ package etl
 import (
 	"context"
 	"encoding/json"
+	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -27,7 +28,7 @@ func TransformLoad(mongo MongoController, resp ApiCallSuccess) error {
 			if err != nil {
 				return err
 			}
-			return nil
+			break // exit out of switch
 		}
 
 		{
@@ -105,6 +106,9 @@ func TransformLoad(mongo MongoController, resp ApiCallSuccess) error {
 	if err != nil {
 		return err
 	}
+
+	log.Println("Transform load success: ", resp.etlConfig.Symbol)
+
 	return nil
 }
 

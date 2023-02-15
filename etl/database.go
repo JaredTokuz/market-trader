@@ -21,6 +21,7 @@ type MongoController struct {
 }
 
 func NewMongoController(mongoURI string, database_name string) (*MongoController, error) {
+	log.Println("Database connecting to ", mongoURI)
 	client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		return nil, err

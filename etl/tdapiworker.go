@@ -26,6 +26,7 @@ func InitWorker() error {
 		wg      sync.WaitGroup
 	)
 	tdApiService := NewTDApiService(mg, api_key, tokenHandler)
+	mg.ApiQueue.Init() // sets all existing docs to stage api
 	for {
 		workDoc = mg.ApiQueue.Get()
 		if workDoc == nil {
@@ -34,15 +35,19 @@ func InitWorker() error {
 		}
 
 		success, err := tdApiService.Call(*workDoc)
-		time.Sleep(1600) // change this to backoff retry
+		time.Sleep(1000)                  // change this to backoff retry
+		mg.ApiQueue.UpdateStage(*workDoc) // update the stage to transform so apiqueue knows not to grab it again
+
 		if err != nil {
+			log.Println("TD Call Error: ", err.Error())
 			mg.Logs.InsertOne(context.TODO(), bson.M{"msg": err.Error(), "category": "TD Call"})
+			continue
 		}
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := TransformLoad(*mg, *success)
+			err = TransformLoad(*mg, success)
 			if err != nil {
 				mg.Logs.InsertOne(context.TODO(), bson.M{"msg": err.Error(), "category": "TD TransformLoad"})
 			}

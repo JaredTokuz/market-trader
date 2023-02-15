@@ -19,7 +19,19 @@ type EtlConfig struct {
 	ID     *primitive.ObjectID `bson:"_id,omitempty"`
 	Symbol string              `bson:"symbol"`
 	Work   EtlJob              `bson:"work"`
+	Stage  EtlStage            `bson:"stage"`
 }
+
+func NewEtlConfig(symbol string, work EtlJob) EtlConfig {
+	return EtlConfig{Symbol: symbol, Work: work, Stage: Api}
+}
+
+type EtlStage string
+
+const (
+	Api       EtlStage = "api"
+	Transform EtlStage = "transform"
+)
 
 type EtlJob string
 

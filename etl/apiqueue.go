@@ -12,8 +12,10 @@ import (
 
 type ApiQueueService interface {
 	Queue(cursor *mongo.Cursor, workName EtlJob) error
-	Remove(etlConfig EtlConfig) error
+	Init() error
 	Get() *EtlConfig
+	UpdateStage(etlConfig EtlConfig) error
+	Remove(etlConfig EtlConfig) error
 }
 
 type apiQueue struct {
@@ -43,7 +45,7 @@ func (q *apiQueue) Queue(cursor *mongo.Cursor, workName EtlJob) error {
 		if err := cursor.Decode(&result); err != nil {
 			return err
 		}
-		field := EtlConfig{Symbol: result.Symbol, Work: workName} //bson.M{"symbol": result.Symbol, "work": workName}
+		field := NewEtlConfig(result.Symbol, workName)
 
 		operations = append(
 			operations,
@@ -66,10 +68,8 @@ func (q *apiQueue) Queue(cursor *mongo.Cursor, workName EtlJob) error {
 	return nil
 }
 
-func (q *apiQueue) Remove(etlConfig EtlConfig) error {
-	_, err := q.apiqueue.DeleteOne(
-		context.TODO(),
-		bson.M{"symbol": etlConfig.Symbol, "work": etlConfig.Work})
+func (q *apiQueue) Init() error {
+	_, err := q.apiqueue.UpdateMany(context.TODO(), bson.D{}, bson.M{"$set": bson.M{"stage": Api}})
 	if err != nil {
 		return err
 	}
@@ -78,9 +78,30 @@ func (q *apiQueue) Remove(etlConfig EtlConfig) error {
 
 func (q *apiQueue) Get() *EtlConfig {
 	var etlConfig EtlConfig
-	err := q.apiqueue.FindOne(context.TODO(), bson.D{}).Decode(&etlConfig)
+	err := q.apiqueue.FindOne(context.TODO(), bson.M{"stage": Api}).Decode(&etlConfig)
 	if err != nil {
 		return nil
 	}
 	return &etlConfig
+}
+
+func (q *apiQueue) UpdateStage(etlConfig EtlConfig) error {
+	_, err := q.apiqueue.UpdateOne(context.TODO(),
+		bson.M{"symbol": etlConfig.Symbol, "work": etlConfig.Work},
+		bson.M{"$set": bson.M{"stage": Transform}})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (q *apiQueue) Remove(etlConfig EtlConfig) error {
+	_, err := q.apiqueue.DeleteOne(
+		context.TODO(),
+		bson.M{"symbol": etlConfig.Symbol, "work": etlConfig.Work})
+	if err != nil {
+		return err
+	}
+	return nil
 }
